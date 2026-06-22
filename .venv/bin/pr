@@ -1,0 +1,8 @@
+#!/bin/sh
+'''exec' "/Users/sebastian/LRZ Sync+Share/code/prompt_router/.venv/bin/python3" "$0" "$@"
+' '''
+import sys
+from prompt_router.cli import main
+if __name__ == '__main__':
+    sys.argv[0] = sys.argv[0].removesuffix('.exe')
+    sys.exit(main())
