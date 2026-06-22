@@ -224,6 +224,96 @@ class CliDbTests(unittest.TestCase):
         self.assertTrue(payload["error"])
         self.assertEqual(result.stderr, "")
 
+    def test_semantic_check_reports_health_risk(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = self.run_pr(
+                "semantic-check",
+                "Bitte fasse den Krankheitsverlauf dieser Patientin zusammen",
+                db_path=Path(tmpdir) / "router.sqlite3",
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertTrue(payload["risk_detected"])
+        self.assertEqual(payload["label"], "health")
+        self.assertIn("SEMANTIC_HEALTH_RISK", payload["reason_codes"])
+
+    def test_classify_with_semantic_check_includes_semantic_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = self.run_pr(
+                "classify",
+                "--with-semantic-check",
+                "Bitte fasse den Krankheitsverlauf dieser Patientin zusammen",
+                db_path=Path(tmpdir) / "router.sqlite3",
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["semantic"]["label"], "health")
+        self.assertIn(
+            "SEMANTIC_HEALTH_RISK",
+            payload["routing"]["reason_codes"],
+        )
+
+    def test_semantic_disagreement_forces_internal_review(self) -> None:
+        prompt = "befunde medikation und genesungsverlauf übersichtlich darstellen"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "router.sqlite3"
+            deterministic = self.run_pr("route", prompt, db_path=db_path)
+            semantic = self.run_pr(
+                "route",
+                "--with-semantic-check",
+                prompt,
+                db_path=db_path,
+            )
+
+        self.assertEqual(deterministic.returncode, 0, deterministic.stderr)
+        self.assertEqual(
+            json.loads(deterministic.stdout)["route"],
+            "external_llm",
+        )
+        self.assertEqual(semantic.returncode, 0, semantic.stderr)
+        semantic_payload = json.loads(semantic.stdout)
+        self.assertEqual(semantic_payload["route"], "internal_and_review")
+        self.assertEqual(
+            semantic_payload["review_reason"],
+            "semantic_disagreement",
+        )
+
+    def test_run_persists_semantic_reason_codes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "router.sqlite3"
+            result = self.run_pr(
+                "run",
+                "--with-semantic-check",
+                "Bitte fasse den Krankheitsverlauf dieser Patientin zusammen",
+                db_path=db_path,
+            )
+            events = self.run_pr("events", "list", db_path=db_path)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["semantic"]["label"], "health")
+        rows = json.loads(events.stdout)
+        self.assertEqual(len(rows), 1)
+        self.assertIn("SEMANTIC_HEALTH_RISK", rows[0]["reason_codes"])
+
+    def test_semantic_dry_run_does_not_persist(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "router.sqlite3"
+            result = self.run_pr(
+                "run",
+                "--with-semantic-check",
+                "--dry-run",
+                "Bitte fasse den Krankheitsverlauf dieser Patientin zusammen",
+                db_path=db_path,
+            )
+            events = self.run_pr("events", "list", db_path=db_path)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("event_id", json.loads(result.stdout))
+        self.assertEqual(json.loads(events.stdout), [])
+
 
 if __name__ == "__main__":
     unittest.main()

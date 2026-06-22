@@ -68,6 +68,34 @@ pr redact "Schreibe an Max Müller unter max@example.com"
 Output is always structured JSON containing `redacted_text` and `entities`.
 The existing `--json` flag remains accepted as a compatibility no-op.
 
+### `pr semantic-check`
+
+Run the deterministic local semantic similarity check without changing or
+persisting a route:
+
+```bash
+pr semantic-check "Bitte fasse den Krankheitsverlauf dieser Patientin zusammen"
+```
+
+The JSON output includes semantic model/version, nearest prototype, similarity,
+threshold, match and risk flags, represented sensitivity, and reason codes.
+
+### Opt-in semantic routing
+
+```bash
+pr classify --with-semantic-check "..."
+pr route --with-semantic-check "..."
+pr run --with-semantic-check "..."
+```
+
+`classify` and `run` include a top-level `semantic` object when enabled.
+`route` retains its existing route-output schema and includes semantic evidence
+through reason codes. Without the flag, command behavior is unchanged.
+
+Semantic similarity is a risk amplifier only. A risky disagreement with
+deterministic classification routes `internal_and_review`; non-risk matches do
+not independently allow external routing.
+
 ### `pr run`
 
 Classify, route, log, and execute placeholder behavior.

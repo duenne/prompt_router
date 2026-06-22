@@ -22,6 +22,11 @@ from .db import (
 from .policy import decide_route
 from .redactor import redact
 from .schemas import SchemaValidationError, validated_route_output
+from .semantic import (
+    SemanticConfigError,
+    SemanticResult,
+    semantic_check,
+)
 
 
 def prompt_hash(prompt: str) -> str:
@@ -40,9 +45,25 @@ def build_parser() -> argparse.ArgumentParser:
 
     classify = sub.add_parser("classify", help="Classify prompt sensitivity and task type")
     classify.add_argument("prompt")
+    classify.add_argument(
+        "--with-semantic-check",
+        action="store_true",
+        help="Apply the opt-in local semantic risk amplifier",
+    )
 
     route = sub.add_parser("route", help="Return routing decision for a prompt")
     route.add_argument("prompt")
+    route.add_argument(
+        "--with-semantic-check",
+        action="store_true",
+        help="Apply the opt-in local semantic risk amplifier",
+    )
+
+    semantic_parser = sub.add_parser(
+        "semantic-check",
+        help="Run the local deterministic semantic similarity check",
+    )
+    semantic_parser.add_argument("prompt")
 
     redact_parser = sub.add_parser("redact", help="Redact detected entities in a prompt")
     redact_parser.add_argument("prompt")
@@ -57,6 +78,11 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--dry-run", action="store_true", help="Do not persist event")
     run.add_argument("--store-raw", action="store_true", help="Store raw prompt locally. Not recommended for production defaults.")
     run.add_argument("--sharing-level", default=None)
+    run.add_argument(
+        "--with-semantic-check",
+        action="store_true",
+        help="Apply the opt-in local semantic risk amplifier",
+    )
 
     events = sub.add_parser("events", help="Event commands")
     events_sub = events.add_subparsers(dest="events_command", required=True)
@@ -99,9 +125,19 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "status":
             return cmd_status(config)
         if args.command == "classify":
-            return cmd_classify(args.prompt, config)
+            return cmd_classify(
+                args.prompt,
+                config,
+                with_semantic_check=args.with_semantic_check,
+            )
         if args.command == "route":
-            return cmd_route(args.prompt, config)
+            return cmd_route(
+                args.prompt,
+                config,
+                with_semantic_check=args.with_semantic_check,
+            )
+        if args.command == "semantic-check":
+            return cmd_semantic_check(args.prompt)
         if args.command == "redact":
             return cmd_redact(args.prompt, json_output=args.json)
         if args.command == "run":
@@ -116,6 +152,7 @@ def main(argv: list[str] | None = None) -> int:
                 store_raw=args.store_raw,
                 sharing_level=sharing_level,
                 config=config,
+                with_semantic_check=args.with_semantic_check,
             )
         if args.command == "events" and args.events_command == "list":
             return cmd_events_list(args.limit, config)
@@ -129,6 +166,7 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_sync(dry_run=args.dry_run, limit=args.limit, config=config)
     except (
         ConfigError,
+        SemanticConfigError,
         SchemaValidationError,
         ValueError,
         OSError,
@@ -157,25 +195,46 @@ def cmd_status(config: Config) -> int:
     return 0
 
 
-def cmd_classify(prompt: str, config: Config) -> int:
+def cmd_classify(
+    prompt: str,
+    config: Config,
+    *,
+    with_semantic_check: bool,
+) -> int:
     result = classify_prompt(prompt)
+    semantic = _optional_semantic_check(prompt, with_semantic_check)
     decision = decide_route(
         result,
         confidence_threshold=config.confidence_threshold,
+        semantic=semantic,
     )
     payload = result.to_dict()
+    if semantic is not None:
+        payload["semantic"] = semantic.to_dict()
     payload["routing"] = validated_route_output(decision)
     print_json(payload)
     return 0
 
 
-def cmd_route(prompt: str, config: Config) -> int:
+def cmd_route(
+    prompt: str,
+    config: Config,
+    *,
+    with_semantic_check: bool,
+) -> int:
     result = classify_prompt(prompt)
+    semantic = _optional_semantic_check(prompt, with_semantic_check)
     decision = decide_route(
         result,
         confidence_threshold=config.confidence_threshold,
+        semantic=semantic,
     )
     print_json(validated_route_output(decision))
+    return 0
+
+
+def cmd_semantic_check(prompt: str) -> int:
+    print_json(semantic_check(prompt).to_dict())
     return 0
 
 
@@ -192,11 +251,14 @@ def cmd_run(
     store_raw: bool,
     sharing_level: str,
     config: Config,
+    with_semantic_check: bool,
 ) -> int:
     classification = classify_prompt(prompt)
+    semantic = _optional_semantic_check(prompt, with_semantic_check)
     decision = decide_route(
         classification,
         confidence_threshold=config.confidence_threshold,
+        semantic=semantic,
     )
     routing = validated_route_output(decision)
     payload: dict[str, Any] = {
@@ -206,6 +268,8 @@ def cmd_run(
         "routing": routing,
         "execution": _placeholder_execution(decision.route),
     }
+    if semantic is not None:
+        payload["semantic"] = semantic.to_dict()
 
     if not dry_run:
         with connect(config.database) as conn:
@@ -223,6 +287,13 @@ def cmd_run(
 
     print_json(payload)
     return 0
+
+
+def _optional_semantic_check(
+    prompt: str,
+    enabled: bool,
+) -> SemanticResult | None:
+    return semantic_check(prompt) if enabled else None
 
 
 def _placeholder_execution(route: str) -> dict[str, Any]:

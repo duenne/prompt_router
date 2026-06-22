@@ -1,12 +1,58 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from .constants import DEFAULT_CONFIDENCE_THRESHOLD
 from .schemas import ClassificationResult, RouteDecision
+from .semantic import SemanticResult
 
 SIMPLE_TASKS = {"format_table", "extract_entities"}
 
 
-def decide_route(result: ClassificationResult, confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD) -> RouteDecision:
+def decide_route(
+    result: ClassificationResult,
+    confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD,
+    semantic: SemanticResult | None = None,
+) -> RouteDecision:
+    decision = _decide_deterministic_route(result, confidence_threshold)
+    if semantic is None or not semantic.risk_detected:
+        return decision
+
+    reason_codes = set(decision.reason_codes)
+    reason_codes.update(semantic.reason_codes)
+    if _semantic_agrees(result, semantic):
+        return replace(decision, reason_codes=sorted(reason_codes))
+
+    reason_codes.add("SEMANTIC_DETERMINISTIC_DISAGREEMENT")
+    if decision.route == "block_or_internal_security":
+        return replace(decision, reason_codes=sorted(reason_codes))
+    reason_codes.discard("PUBLIC_EXTERNAL_ALLOWED")
+    reason_codes.discard("PUBLIC_SIMPLE_TASK")
+    return RouteDecision(
+        route="internal_and_review",
+        allowed_external=False,
+        should_review=True,
+        review_reason="semantic_disagreement",
+        executor="internal_llm",
+        reason_codes=sorted(reason_codes),
+    )
+
+
+def _semantic_agrees(
+    result: ClassificationResult,
+    semantic: SemanticResult,
+) -> bool:
+    if semantic.label in {"health", "employment"}:
+        return result.sensitivity == "sensitive_context"
+    if semantic.label == "credentials":
+        return result.sensitivity == "credentials" or result.contains_secrets
+    return True
+
+
+def _decide_deterministic_route(
+    result: ClassificationResult,
+    confidence_threshold: float,
+) -> RouteDecision:
     reason_codes = set(result.reason_codes)
 
     if result.contains_secrets or result.sensitivity == "credentials":

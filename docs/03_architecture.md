@@ -17,15 +17,17 @@ prompt_router.cli
  +-- classifier.py      deterministic sensitivity and task classification
  +-- config.py          optional JSON configuration and environment overrides
  +-- redactor.py        redaction of detected entities
+ +-- semantic.py        opt-in deterministic local similarity check
+ +-- data/              packaged labeled semantic prototypes
  +-- policy.py          route decision
  +-- db.py              local SQLite audit/review/dataset data
  +-- schemas.py         dataclasses and route-output validation
 ```
 
-The CLI loads configuration once, classifies the prompt, applies the configured
-confidence threshold, validates the route output, and only then prints or
-persists the decision. Route validation is implemented with the Python standard
-library and does not execute or interpret prompt content.
+The CLI loads configuration once, classifies the prompt, optionally computes a
+local semantic risk signal, applies policy and the configured confidence
+threshold, validates the route output, and only then prints or persists the
+decision. Semantic checking remains disabled unless explicitly requested.
 
 ## Target architecture
 
@@ -112,7 +114,14 @@ Agent -> OpenAI-compatible gateway endpoint -> prompt-router -> provider
 
 The agent thinks it is calling a model endpoint. The gateway enforces classification, routing, redaction, logging, and policy.
 
-## Semantic vector check: future architecture
+## Semantic vector check
+
+The first semantic implementation uses a deterministic 128-dimensional hashed
+word and character-trigram vector with cosine similarity against packaged local
+prototypes. It establishes an embedding and similarity boundary without an
+external API or vector database.
+
+The future architecture remains:
 
 Vektorprüfung should be added later as a secondary risk signal:
 
@@ -125,3 +134,6 @@ Important rule:
 ```text
 Vector similarity can increase risk, but it must not be the sole reason to allow external routing.
 ```
+
+The current placeholder follows that rule. Non-risk prototype matches never
+authorize a route. Risk disagreement forces internal routing and review.

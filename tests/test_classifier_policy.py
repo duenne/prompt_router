@@ -6,6 +6,7 @@ from prompt_router.classifier import classify_prompt
 from prompt_router.policy import decide_route
 from prompt_router.redactor import redact
 from prompt_router.schemas import ClassificationResult
+from prompt_router.semantic import semantic_check
 
 
 class ClassifierPolicyTests(unittest.TestCase):
@@ -110,6 +111,80 @@ class ClassifierPolicyTests(unittest.TestCase):
         self.assertEqual(decision.route, "block_or_internal_security")
         self.assertTrue(decision.should_review)
         self.assertEqual(decision.review_reason, "secret_detected")
+
+    def test_semantic_health_disagreement_forces_internal_review(self) -> None:
+        result = self.classification(sensitivity="public", confidence=0.95)
+        semantic = semantic_check(
+            "Fasse den medizinischen Verlauf und die Behandlung zusammen"
+        )
+
+        decision = decide_route(result, semantic=semantic)
+
+        self.assertEqual(decision.route, "internal_and_review")
+        self.assertFalse(decision.allowed_external)
+        self.assertTrue(decision.should_review)
+        self.assertEqual(decision.review_reason, "semantic_disagreement")
+        self.assertIn("SEMANTIC_HEALTH_RISK", decision.reason_codes)
+        self.assertIn(
+            "SEMANTIC_DETERMINISTIC_DISAGREEMENT",
+            decision.reason_codes,
+        )
+        self.assertNotIn("PUBLIC_EXTERNAL_ALLOWED", decision.reason_codes)
+
+    def test_semantic_health_agreement_preserves_safe_route(self) -> None:
+        result = self.classification(
+            sensitivity="sensitive_context",
+            confidence=0.82,
+        )
+        semantic = semantic_check(
+            "Fasse den medizinischen Verlauf und die Behandlung zusammen"
+        )
+
+        decision = decide_route(result, semantic=semantic)
+
+        self.assertEqual(decision.route, "internal_llm")
+        self.assertTrue(decision.should_review)
+        self.assertEqual(decision.review_reason, "sensitive_context")
+        self.assertIn("SEMANTIC_HEALTH_RISK", decision.reason_codes)
+        self.assertNotIn(
+            "SEMANTIC_DETERMINISTIC_DISAGREEMENT",
+            decision.reason_codes,
+        )
+
+    def test_non_risk_semantic_match_does_not_change_public_route(self) -> None:
+        result = self.classification(
+            sensitivity="public",
+            task_type="summarize",
+            confidence=0.95,
+        )
+        semantic = semantic_check(
+            "Formatiere diese öffentlichen Informationen als Tabelle mit Spalten"
+        )
+
+        decision = decide_route(result, semantic=semantic)
+
+        self.assertEqual(decision.route, "external_llm")
+        self.assertTrue(decision.allowed_external)
+        self.assertNotIn(
+            "SEMANTIC_PUBLIC_TABLE_MATCH",
+            decision.reason_codes,
+        )
+
+    def test_semantic_credentials_disagreement_does_not_claim_secret_detection(
+        self,
+    ) -> None:
+        result = self.classification(sensitivity="public", confidence=0.95)
+        semantic = semantic_check(
+            "Fasse Hinweise zu Passwort Zugangsdaten und API Schlüssel zusammen"
+        )
+        self.assertTrue(semantic.risk_detected)
+        self.assertEqual(semantic.label, "credentials")
+
+        decision = decide_route(result, semantic=semantic)
+
+        self.assertEqual(decision.route, "internal_and_review")
+        self.assertNotEqual(decision.route, "block_or_internal_security")
+        self.assertEqual(decision.review_reason, "semantic_disagreement")
 
     def test_redaction_replaces_entities(self) -> None:
         result = redact("Schreibe an Max Müller unter max@example.com")

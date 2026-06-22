@@ -89,6 +89,11 @@ CREATE TABLE training_examples (
 
 ## Semantic features: future table
 
+The first opt-in semantic check does not create this table. It stores only
+semantic reason codes in the existing `prompt_events.reason_codes` field.
+Vectors, similarities, and nearest-neighbor details remain transient. The table
+below is still deferred until a dedicated persistence/vector-backend task.
+
 ```sql
 CREATE TABLE semantic_prompt_features (
     id TEXT PRIMARY KEY,

@@ -1,0 +1,86 @@
+[
+  {
+    "id": "health-1",
+    "label": "health",
+    "text": "Krankheitsverlauf Patientin medizinischer Verlauf Diagnose Therapie Behandlung Symptome zusammenfassen",
+    "risk": true,
+    "sensitivity": "sensitive_context"
+  },
+  {
+    "id": "health-2",
+    "label": "health",
+    "text": "patient health record illness diagnosis treatment clinical history",
+    "risk": true,
+    "sensitivity": "sensitive_context"
+  },
+  {
+    "id": "health-3",
+    "label": "health",
+    "text": "Krankheitsverlauf einer Patientin zusammenfassen",
+    "risk": true,
+    "sensitivity": "sensitive_context"
+  },
+  {
+    "id": "health-4",
+    "label": "health",
+    "text": "Befunde Medikation Genesungsverlauf übersichtlich darstellen",
+    "risk": true,
+    "sensitivity": "sensitive_context"
+  },
+  {
+    "id": "employment-1",
+    "label": "employment",
+    "text": "Personalakte Bewerbung Lebenslauf Gehalt Kündigung Abmahnung Arbeitsvertrag",
+    "risk": true,
+    "sensitivity": "sensitive_context"
+  },
+  {
+    "id": "employment-2",
+    "label": "employment",
+    "text": "employee performance review salary termination application resume human resources",
+    "risk": true,
+    "sensitivity": "sensitive_context"
+  },
+  {
+    "id": "public-table-1",
+    "label": "public_table",
+    "text": "öffentliche Daten als Tabelle formatieren Spalten und Zeilen erstellen",
+    "risk": false,
+    "sensitivity": null
+  },
+  {
+    "id": "public-table-2",
+    "label": "public_table",
+    "text": "format public information as a table with rows and columns",
+    "risk": false,
+    "sensitivity": null
+  },
+  {
+    "id": "code-1",
+    "label": "code",
+    "text": "Python Funktion schreiben Fehler beheben Code generieren Unit Test",
+    "risk": false,
+    "sensitivity": null
+  },
+  {
+    "id": "code-2",
+    "label": "code",
+    "text": "generate code implement function debug software write tests",
+    "risk": false,
+    "sensitivity": null
+  },
+  {
+    "id": "credentials-1",
+    "label": "credentials",
+    "text": "Passwort Zugangsdaten API Schlüssel Token Private Key Secret",
+    "risk": true,
+    "sensitivity": "credentials"
+  },
+  {
+    "id": "credentials-2",
+    "label": "credentials",
+    "text": "password credentials api key access token private key secret",
+    "risk": true,
+    "sensitivity": "credentials"
+  }
+]

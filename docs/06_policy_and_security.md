@@ -50,6 +50,10 @@ Reason codes should be short and stable, for example:
 - `BUSINESS_CONFIDENTIAL_KEYWORD`
 - `LOW_CONFIDENCE`
 - `PUBLIC_SIMPLE_TASK`
+- `SEMANTIC_HEALTH_RISK`
+- `SEMANTIC_EMPLOYMENT_RISK`
+- `SEMANTIC_CREDENTIALS_RISK`
+- `SEMANTIC_DETERMINISTIC_DISAGREEMENT`
 
 ## Raw prompt handling
 
@@ -79,7 +83,7 @@ Local installation owns raw prompts. Central systems may receive only explicitly
 
 ## Semantic vector checks
 
-Future vector checks should follow this rule:
+The opt-in placeholder semantic check follows this rule:
 
 ```text
 Semantic similarity can increase risk, but it must not independently allow external routing.
@@ -89,6 +93,21 @@ Examples:
 
 - Prompt is similar to known health-context prompts -> route internally.
 - Prompt is similar to public examples -> still require deterministic and classifier checks.
+
+Policy behavior:
+
+- no semantic flag means no semantic computation and no policy change;
+- a non-risk semantic match cannot lower risk or authorize an external route;
+- a risky match agreeing with deterministic sensitivity preserves the existing
+  safe route and adds semantic reason codes;
+- a risky disagreement routes `internal_and_review` with review reason
+  `semantic_disagreement`;
+- semantic credential similarity alone does not claim that a secret was
+  detected and does not select `block_or_internal_security`;
+- an existing deterministic secret/security route is never weakened.
+
+The current implementation stores semantic reason codes in event reason codes.
+It does not store vectors or add a vector database.
 
 ## Prompt injection concern
 

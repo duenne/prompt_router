@@ -16,3 +16,6 @@ pr = "prompt_router.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"prompt_router.data" = ["semantic_examples.json"]

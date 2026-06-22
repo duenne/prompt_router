@@ -39,15 +39,20 @@ Deliver:
 
 ## Phase 2: semantic risk check
 
-Deliver:
+First increment delivered:
 
 - deterministic local embedding interface;
-- pluggable vector backend;
-- simple nearest-neighbor store;
+- packaged local labeled prototypes and in-memory nearest-prototype comparison;
 - `pr semantic-check` command;
-- policy integration as risk amplifier.
+- opt-in policy integration as a risk amplifier;
+- semantic reason-code persistence in existing events.
 
-Implementation should be possible without external APIs first, using a placeholder or local embedding adapter.
+Still deferred:
+
+- pluggable vector backend;
+- vector database or persistent nearest-neighbor store;
+- production local embedding model;
+- semantic feature table persistence.
 
 ## Phase 3: Docker + PostgreSQL/pgvector
 

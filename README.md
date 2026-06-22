@@ -44,6 +44,8 @@ pr status
 pr classify "Mach daraus eine Tabelle: Max Müller, max@example.com, 0176 123456"
 pr route "Fasse diesen öffentlichen Text zusammen"
 pr redact "Schreibe an Max Müller unter max@example.com"
+pr semantic-check "Bitte fasse den Krankheitsverlauf dieser Patientin zusammen"
+pr route --with-semantic-check "befunde medikation und genesungsverlauf übersichtlich darstellen"
 pr run --dry-run "Mach daraus eine Tabelle: Max Müller, max@example.com"
 pr run "Mach daraus eine Tabelle: Max Müller, max@example.com"
 pr events list
@@ -89,8 +91,9 @@ be between `0.0` and `1.0`.
 
 Implemented in this starter repo:
 
-- CLI commands: `status`, `classify`, `route`, `redact`, `run`, `events list`, `review list`, `review label`, `dataset build`, `sync --dry-run`.
+- CLI commands: `status`, `classify`, `route`, `redact`, `semantic-check`, `run`, `events list`, `review list`, `review label`, `dataset build`, `sync --dry-run`.
 - Deterministic detection for e-mail, phone-like strings, IBAN-like strings, API-key-like strings, private-key markers, simple person-name patterns, and sensitive context keywords.
+- Opt-in local semantic similarity checking with packaged labeled prototypes and deterministic hashed feature vectors.
 - Conservative policy: secrets block; PII/sensitive/business/ambiguous routes internal; public simple table/extract tasks route to specialized executor; public remaining prompts route external.
 - Strict standard-library validation for route output objects before CLI output or event persistence.
 - Optional JSON configuration with environment-first precedence.
@@ -106,7 +109,27 @@ Not yet implemented:
 - PostgreSQL/pgvector;
 - central sync API;
 - trainable classifier;
-- semantic vector checking.
+- production embedding models and vector-database search.
+
+## Semantic risk check
+
+`pr semantic-check PROMPT` compares a prompt with local prototypes for health,
+employment, public table formatting, code, and credentials/security contexts.
+The placeholder vector uses deterministic hashed word and character-trigram
+features; it does not call an embedding API.
+
+Semantic policy integration is opt-in:
+
+```bash
+pr classify --with-semantic-check "..."
+pr route --with-semantic-check "..."
+pr run --with-semantic-check "..."
+```
+
+A risky semantic match can preserve or increase risk only. It cannot authorize
+external routing. If semantic risk conflicts with deterministic classification,
+the route becomes `internal_and_review`. Semantic reason codes are stored with
+persisted events. Vectors and nearest-neighbor details are not persisted.
 
 ## Important design principle
 
