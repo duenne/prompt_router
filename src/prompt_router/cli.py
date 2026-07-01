@@ -109,6 +109,13 @@ def build_parser() -> argparse.ArgumentParser:
     dataset_build = dataset_sub.add_parser("build", help="Build JSONL dataset from approved training examples")
     dataset_build.add_argument("--output", required=True)
 
+    eval_parser = sub.add_parser(
+        "eval",
+        help="Evaluate the local classifier and policy against a JSONL dataset",
+    )
+    eval_parser.add_argument("--dataset", required=True)
+    eval_parser.add_argument("--json", action="store_true", dest="json_output")
+
     sync = sub.add_parser("sync", help="Sync commands")
     sync.add_argument("--dry-run", action="store_true", help="Only dry-run is supported in starter repo")
     sync.add_argument("--limit", type=int, default=50)
@@ -162,6 +169,12 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_review_label(args, config)
         if args.command == "dataset" and args.dataset_command == "build":
             return cmd_dataset_build(args.output, config)
+        if args.command == "eval":
+            return cmd_eval(
+                args.dataset,
+                json_output=args.json_output,
+                config=config,
+            )
         if args.command == "sync":
             return cmd_sync(dry_run=args.dry_run, limit=args.limit, config=config)
     except (
@@ -344,6 +357,20 @@ def cmd_dataset_build(output: str, config: Config) -> int:
         for example in examples:
             f.write(json.dumps(example, ensure_ascii=False) + "\n")
     print_json({"output": str(path), "examples": len(examples)})
+    return 0
+
+
+def cmd_eval(dataset: str, *, json_output: bool, config: Config) -> int:
+    from .evaluator import evaluate_dataset, format_human_report
+
+    result = evaluate_dataset(
+        dataset,
+        confidence_threshold=config.confidence_threshold,
+    )
+    if json_output:
+        print_json(result)
+    else:
+        print(format_human_report(result))
     return 0
 
 

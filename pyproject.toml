@@ -10,6 +10,7 @@ requires-python = ">=3.10"
 authors = [{ name = "Prompt Router Contributors" }]
 readme = "README.md"
 license = { text = "MIT" }
+dependencies = ["jsonschema>=4.18"]
 
 [project.scripts]
 pr = "prompt_router.cli:main"

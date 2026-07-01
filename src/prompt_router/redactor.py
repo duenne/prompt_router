@@ -9,7 +9,7 @@ PATTERNS: list[tuple[str, str, str]] = [
     ("EMAIL", r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", "EMAIL_PATTERN"),
     ("IBAN", r"\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b", "IBAN_PATTERN"),
     ("PRIVATE_KEY", r"-----BEGIN [A-Z ]*PRIVATE KEY-----", "PRIVATE_KEY_MARKER"),
-    ("API_KEY", r"\b(?:sk|pk|rk|api)[-_][A-Za-z0-9]{16,}\b", "API_KEY_PATTERN"),
+    ("API_KEY", r"\b(?:sk|pk|rk|api)[-_][A-Za-z0-9_-]{16,}\b", "API_KEY_PATTERN"),
     ("PHONE", r"(?<!\w)(?:\+\d{1,3}[\s\-/]?)?(?:\(?\d{2,5}\)?[\s\-/]?){2,}\d{2,}(?!\w)", "PHONE_PATTERN"),
 ]
 
@@ -44,6 +44,8 @@ def detect_entities(text: str) -> list[Entity]:
         # Avoid matching known phrases in examples too aggressively.
         matched = match.group(0)
         if matched.lower() in {"mach daraus", "bitte fasse", "schreibe eine"}:
+            continue
+        if matched.split(maxsplit=1)[0].lower() in {"project", "projekt"}:
             continue
         if _overlaps((match.start(), match.end()), entities):
             continue

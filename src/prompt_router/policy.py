@@ -6,7 +6,18 @@ from .constants import DEFAULT_CONFIDENCE_THRESHOLD
 from .schemas import ClassificationResult, RouteDecision
 from .semantic import SemanticResult
 
-SIMPLE_TASKS = {"format_table", "extract_entities"}
+SIMPLE_TASKS = {"format_table", "extract_entities", "classify"}
+POLICY_RISK_REASON_CODES = {
+    "PROMPT_INJECTION_ATTEMPT",
+    "POLICY_BYPASS_PATTERN",
+    "EXTERNAL_ROUTING_REQUEST",
+}
+AGENTIC_REVIEW_CONTEXT_CODES = {
+    "MISSING_CONTEXT",
+    "INTERNAL_REFERENCE_PATTERN",
+    "LOW_CONFIDENCE",
+    "UNKNOWN_TASK_TYPE",
+}
 
 
 def decide_route(
@@ -63,6 +74,31 @@ def _decide_deterministic_route(
             should_review=True,
             review_reason="secret_detected",
             executor="internal_security",
+            reason_codes=sorted(reason_codes),
+        )
+
+    if reason_codes & POLICY_RISK_REASON_CODES:
+        reason_codes.add("LOW_CONFIDENCE")
+        return RouteDecision(
+            route="internal_and_review",
+            allowed_external=False,
+            should_review=True,
+            review_reason="policy_risk_detected",
+            executor="internal_llm",
+            reason_codes=sorted(reason_codes),
+        )
+
+    if "MISSING_CONTEXT" in reason_codes or (
+        "AGENTIC_TASK_PATTERN" in reason_codes
+        and reason_codes & AGENTIC_REVIEW_CONTEXT_CODES
+    ):
+        reason_codes.add("LOW_CONFIDENCE")
+        return RouteDecision(
+            route="internal_and_review",
+            allowed_external=False,
+            should_review=True,
+            review_reason="missing_or_internal_context",
+            executor="internal_llm",
             reason_codes=sorted(reason_codes),
         )
 

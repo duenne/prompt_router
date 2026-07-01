@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "prompt_router_eval_v0_1.schema.json",
+  "title": "Prompt Router Evaluation Dataset Record v0.1",
+  "description": "One labeled prompt-router evaluation record. When requires_review is true, expected_route should usually be internal_and_review; policy-approved exceptions are permitted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "prompt",
+    "language",
+    "source_type",
+    "sensitivity_label",
+    "task_type_label",
+    "complexity_label",
+    "domain_label",
+    "expected_route",
+    "expected_allowed_external",
+    "expected_reason_codes",
+    "requires_review",
+    "contains_prompt_injection",
+    "policy_expectation",
+    "split",
+    "notes",
+    "risk_flags",
+    "routing_vector",
+    "persona",
+    "generation_metadata"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "prompt_router_eval_v0_1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "language": {
+      "type": "string",
+      "minLength": 2
+    },
+    "source_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sensitivity_label": {
+      "enum": [
+        "public",
+        "personal_data",
+        "sensitive_context",
+        "business_confidential",
+        "credentials",
+        "ambiguous"
+      ]
+    },
+    "task_type_label": {
+      "enum": [
+        "format_table",
+        "extract_entities",
+        "summarize",
+        "rewrite",
+        "write_email",
+        "classify",
+        "code",
+        "agentic_task",
+        "unknown"
+      ]
+    },
+    "complexity_label": {
+      "enum": ["low", "medium", "high", "unknown"]
+    },
+    "domain_label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_route": {
+      "enum": [
+        "block_or_internal_security",
+        "internal_llm",
+        "internal_small_model",
+        "specialized_executor",
+        "external_llm",
+        "internal_and_review"
+      ]
+    },
+    "expected_allowed_external": {
+      "type": "boolean"
+    },
+    "expected_reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z][A-Z0-9_]*$"
+      },
+      "uniqueItems": true
+    },
+    "requires_review": {
+      "type": "boolean",
+      "description": "When true, expected_route should usually be internal_and_review; exceptions may be retained when explicitly justified by policy."
+    },
+    "contains_prompt_injection": {
+      "type": "boolean"
+    },
+    "policy_expectation": {
+      "enum": [
+        "must_not_route_external",
+        "must_block_or_security",
+        "must_review",
+        "must_use_specialized_executor",
+        "may_route_external"
+      ]
+    },
+    "split": {
+      "enum": ["dev", "test", "challenge"]
+    },
+    "notes": {
+      "type": "string"
+    },
+    "risk_flags": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "has_pii",
+        "has_secrets",
+        "has_sensitive_context",
+        "has_business_confidential",
+        "has_prompt_injection",
+        "is_ambiguous"
+      ],
+      "properties": {
+        "has_pii": {"type": "boolean"},
+        "has_secrets": {"type": "boolean"},
+        "has_sensitive_context": {"type": "boolean"},
+        "has_business_confidential": {"type": "boolean"},
+        "has_prompt_injection": {"type": "boolean"},
+        "is_ambiguous": {"type": "boolean"}
+      }
+    },
+    "routing_vector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "sensitivity_id",
+        "task_type_id",
+        "complexity_id",
+        "route_id",
+        "risk_bits",
+        "policy_bits"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "0.1"
+        },
+        "sensitivity_id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Sensitivity ID mapping: 0 public; 1 personal_data; 2 sensitive_context; 3 business_confidential; 4 credentials; 5 ambiguous."
+        },
+        "task_type_id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8,
+          "description": "Task type ID mapping: 0 format_table; 1 extract_entities; 2 summarize; 3 rewrite; 4 write_email; 5 classify; 6 code; 7 agentic_task; 8 unknown."
+        },
+        "complexity_id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3,
+          "description": "Complexity ID mapping: 0 low; 1 medium; 2 high; 3 unknown."
+        },
+        "route_id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Route ID mapping: 0 block_or_internal_security; 1 internal_llm; 2 internal_small_model; 3 specialized_executor; 4 external_llm; 5 internal_and_review."
+        },
+        "risk_bits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63,
+          "description": "Risk bitmask: 1 has_pii; 2 has_secrets; 4 has_sensitive_context; 8 has_business_confidential; 16 has_prompt_injection; 32 is_ambiguous."
+        },
+        "policy_bits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 31,
+          "description": "Policy bitmask: 1 must_not_route_external; 2 must_block_or_security; 4 must_review; 8 must_use_specialized_executor; 16 may_route_external."
+        }
+      }
+    },
+    "persona": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "persona_id",
+        "role",
+        "domain",
+        "language_style",
+        "expertise_level",
+        "risk_posture"
+      ],
+      "properties": {
+        "persona_id": {"type": "string", "minLength": 1},
+        "role": {"type": "string", "minLength": 1},
+        "domain": {"type": "string", "minLength": 1},
+        "language_style": {"type": "string", "minLength": 1},
+        "expertise_level": {"type": "string", "minLength": 1},
+        "risk_posture": {"type": "string", "minLength": 1}
+      }
+    },
+    "generation_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generation_method",
+        "template_id",
+        "generator",
+        "review_status",
+        "synthetic_data_only"
+      ],
+      "properties": {
+        "generation_method": {"type": "string", "minLength": 1},
+        "template_id": {"type": "string", "minLength": 1},
+        "generator": {"type": "string", "minLength": 1},
+        "review_status": {"type": "string", "minLength": 1},
+        "synthetic_data_only": {"type": "boolean"}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "sensitivity_label": {
+            "enum": [
+              "personal_data",
+              "sensitive_context",
+              "business_confidential",
+              "credentials",
+              "ambiguous"
+            ]
+          }
+        },
+        "required": ["sensitivity_label"]
+      },
+      "then": {
+        "properties": {
+          "expected_allowed_external": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "sensitivity_label": {"const": "credentials"}
+        },
+        "required": ["sensitivity_label"]
+      },
+      "then": {
+        "properties": {
+          "expected_route": {"const": "block_or_internal_security"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "contains_prompt_injection": {"const": true}
+        },
+        "required": ["contains_prompt_injection"]
+      },
+      "then": {
+        "properties": {
+          "risk_flags": {
+            "properties": {
+              "has_prompt_injection": {"const": true}
+            },
+            "required": ["has_prompt_injection"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "policy_expectation": {"const": "must_block_or_security"}
+        },
+        "required": ["policy_expectation"]
+      },
+      "then": {
+        "properties": {
+          "expected_route": {"const": "block_or_internal_security"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "policy_expectation": {"const": "may_route_external"},
+          "expected_allowed_external": {"const": true}
+        },
+        "required": ["policy_expectation", "expected_allowed_external"]
+      },
+      "then": {
+        "properties": {
+          "sensitivity_label": {"const": "public"}
+        }
+      }
+    }
+  ]
+}
